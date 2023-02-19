@@ -1,0 +1,14 @@
+?expr: subexpr | apply
+?subexpr: var | mlambda | "(" expr ")"
+apply: expr subexpr
+var: VARWORD
+mlambda: ("λ" | "\\") varlist "." expr
+
+varlist: VARWORD*
+VARWORD: ("_"|LETTER|DIGIT|"α"|"β"|"γ"|"δ"|"ε"|"ζ"|"ω")+
+
+%ignore WS
+
+%import common.LETTER
+%import common.DIGIT
+%import common.WS
