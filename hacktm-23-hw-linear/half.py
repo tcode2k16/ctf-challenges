@@ -1,5 +1,5 @@
 import numpy as np
-from pwn import p16, u16
+from pwn import p16, u16, u8, p8
 import pickle
 from enum import Enum
 import gzip
@@ -40,7 +40,7 @@ def const(v):
   return ('c', v)
 
 def const_int(i):
-  return const(half_to_byte(half_of_int(i)))
+  return ('c_i', i)
 
 # def build_if(val, expr):
 #   OFF = [
@@ -217,6 +217,8 @@ def extract_const(expr):
       counts[name] = 1
       i += 1
       return ('v', name)
+    elif expr[0] == 'c_i':
+      return ('c_i', expr[1])
     elif expr[0] == 'v':
       assert expr[1] not in consts
       return expr
@@ -233,8 +235,8 @@ def extract_const(expr):
     new_expr = ('ctx', k, ('c', v), new_expr)
   return new_expr
 def serialize(expr):
-  # expr = extract_const(expr)
-  # print(expr)
+  expr = extract_const(expr)
+  print(expr)
   curr = b''
   env = {}
   def inner(expr):
@@ -244,6 +246,9 @@ def serialize(expr):
     elif expr[0] == 'c':
       curr += bytes([Expr_type.CONST.value << 5])
       curr += p16(expr[1], endian='little')
+    elif expr[0] == 'c_i':
+      curr += bytes([Expr_type.CONST_INT.value << 5])
+      curr += p8(expr[1], endian='little')
     elif expr[0] == 'v':
       nid = env[expr[1]]
       if nid < 2**5:
@@ -302,6 +307,8 @@ def deserialize(data):
       return ('x',), 1
     elif expr_type == Expr_type.CONST:
       return ('c', u16(data[i+1:i+3], endian='little')), 3
+    elif expr_type == Expr_type.CONST_INT:
+      return ('c_i', u8(data[i+1:i+2], endian='little')), 2
     elif expr_type == Expr_type.VAR:
       return ('v', f'v{data[i] & 0b11111}'), 1
     elif expr_type == Expr_type.ARTH_OP:
@@ -333,6 +340,8 @@ def half_linear_eval(expr, x, env={}):
       return True, x
     elif expr[0] == 'c':
       return False, half_of_byte(expr[1])
+    elif expr[0] == 'c_i':
+      return False, half_of_int(expr[1])
     elif expr[0] == 'v':
       return env[expr[1]]
     elif expr[0] == '+':
