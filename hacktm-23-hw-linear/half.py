@@ -187,12 +187,10 @@ class Expr_type(Enum):
   CONST = 0b001
   
   VAR = 0b010
-  VAR_EXTRA = 0b011
   
   ARTH_OP = 0b100
   
   CTX = 0b101
-  CTX_EXTRA = 0b110
 
 class ARTH_OP_type(Enum):
   ADD = 0b00
@@ -249,9 +247,6 @@ def serialize(expr):
       nid = env[expr[1]]
       if nid < 2**5:
         curr += bytes([(Expr_type.VAR.value << 5) + nid])
-      elif nid <= 0x1fff:
-        curr += bytes([(Expr_type.VAR_EXTRA.value << 5) + (nid >> 8)])
-        curr += bytes([nid&0xff])
       else:
         assert False
     elif expr[0] == '+':
@@ -278,9 +273,7 @@ def serialize(expr):
       # assert nid < 2**5
       if nid < 2**5:
         curr += bytes([(Expr_type.CTX.value << 5) + nid])
-      elif nid <= 0x1fff:
-        curr += bytes([(Expr_type.CTX_EXTRA.value << 5) + (nid >> 8)])
-        curr += bytes([nid&0xff])
+      
       else:
         assert False
       
@@ -301,22 +294,29 @@ def serialize(expr):
 def deserialize(data):
   data = bz2.decompress(data)
   def inner(i):
-    type = data[i] >> 5
-    if  == 'x':
+    expr_type = Expr_type(data[i] >> 5)
+    if expr_type == Expr_type.X:
       return ('x',), 1
-    elif data[i] == 'c':
-      return ('c', data[i+1]), 2
-    elif data[i] == 'v':
-      return ('v', data[i+1]), 2
-    elif data[i] in ['+', '-','*']:
+    elif expr_type == Expr_type.CONST:
+      return ('c', u16(data[i+1:i+3], endian='little')), 3
+    elif expr_type == Expr_type.VAR:
+      return ('v', f'v{data[i] & 0b11111}'), 1
+    elif expr_type == Expr_type.ARTH_OP:
       l, l_inc = inner(i+1)
       r, r_inc = inner(i+1+l_inc)
-      return (data[i], l, r), 1+l_inc+r_inc
-    elif data[i] == 'ctx':
+      arth_type = ARTH_OP_type(data[i] & 0b11)
+      if arth_type == ARTH_OP_type.ADD:
+        op = '+'
+      elif arth_type == ARTH_OP_type.SUB:
+        op  = '-'
+      elif arth_type == ARTH_OP_type.MUL:
+        op  = '*'
+      return (op, l, r), 1+l_inc+r_inc
+    elif expr_type == Expr_type.CTX:
       
-      l, l_inc = inner(i+2)
-      r, r_inc = inner(i+2+l_inc)
-      return ('ctx', data[i+1], l, r), 2+l_inc+r_inc
+      l, l_inc = inner(i+1)
+      r, r_inc = inner(i+1+l_inc)
+      return ('ctx', f'v{data[i] & 0b11111}', l, r), 1+l_inc+r_inc
     else:
       assert False
   return inner(0)[0]

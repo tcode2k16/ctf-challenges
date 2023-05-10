@@ -57,6 +57,7 @@ def sbox_test(expr):
   for i in range(256):
     r = half_linear_eval(expr, half_of_int(i))
     assert r == s_box[i], f'{r} != {s_box[i]}'
+  print('prefix_test passed')
 
 def prefix_test(expr):
   assert expr_of_prefix(expr_to_prefix(expr)) == expr
@@ -70,13 +71,13 @@ if __name__ == '__main__':
   # sbox_test(solve.sbox_atempt2())
   # print('sbox_test passed')
   # prefix_test(solve.sbox_atempt1())
-  # print('prefix_test passed')
   expr = solve.sbox_atempt2()
   print(expr)
   data = serialize(expr)
-  # print(data)
-  # print(len(data))
+  print(data)
+  print(len(data))
   new_expr = deserialize(data)
-  assert new_expr == expr
+  sbox_test(new_expr)
+  # assert new_expr == expr
   
 
