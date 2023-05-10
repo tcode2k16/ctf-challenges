@@ -1,5 +1,5 @@
 import numpy as np
-from pwn import p16, u16, u8, p8
+from pwn import p16, u16
 import pickle
 from enum import Enum
 import gzip
@@ -40,7 +40,7 @@ def const(v):
   return ('c', v)
 
 def const_int(i):
-  return ('c_i', i)
+  return const(half_to_byte(half_of_int(i)))
 
 # def build_if(val, expr):
 #   OFF = [
@@ -186,8 +186,8 @@ def expr_of_prefix(prefix):
 class Expr_type(Enum):
   X = 0b000
   CONST = 0b001
-  CONST_INT = 0b010
-  VAR = 0b011
+  
+  VAR = 0b010
   
   ARTH_OP = 0b100
   
@@ -217,8 +217,6 @@ def extract_const(expr):
       counts[name] = 1
       i += 1
       return ('v', name)
-    elif expr[0] == 'c_i':
-      return ('c_i', expr[1])
     elif expr[0] == 'v':
       assert expr[1] not in consts
       return expr
@@ -235,8 +233,8 @@ def extract_const(expr):
     new_expr = ('ctx', k, ('c', v), new_expr)
   return new_expr
 def serialize(expr):
-  expr = extract_const(expr)
-  print(expr)
+  # expr = extract_const(expr)
+  # print(expr)
   curr = b''
   env = {}
   def inner(expr):
@@ -246,27 +244,31 @@ def serialize(expr):
     elif expr[0] == 'c':
       curr += bytes([Expr_type.CONST.value << 5])
       curr += p16(expr[1], endian='little')
-    elif expr[0] == 'c_i':
-      curr += bytes([Expr_type.CONST_INT.value << 5])
-      curr += p8(expr[1], endian='little')
     elif expr[0] == 'v':
       nid = env[expr[1]]
       if nid < 2**5:
         curr += bytes([(Expr_type.VAR.value << 5) + nid])
       else:
         assert False
-    elif expr[0] == '+':
-      curr += bytes([(Expr_type.ARTH_OP.value << 5)+ARTH_OP_type.ADD.value])
-      inner(expr[1])
-      inner(expr[2])
-    elif expr[0] == '-':
-      curr += bytes([(Expr_type.ARTH_OP.value << 5)+ARTH_OP_type.SUB.value])
-      inner(expr[1])
-      inner(expr[2])
-    elif expr[0] == '*':
-      curr += bytes([(Expr_type.ARTH_OP.value << 5)+ARTH_OP_type.MUL.value])
-      inner(expr[1])
-      inner(expr[2])
+    elif expr[0] in ['+','-','*']:
+      arth_op = {
+        '+': ARTH_OP_type.ADD,
+        '-': ARTH_OP_type.SUB,
+        '*': ARTH_OP_type.MUL,
+      }[expr[0]]
+      l_is_const = 1 if expr[1][0] == 'c' else 0
+      r_is_const = 1 if expr[2][0] == 'c' else 0
+      curr += bytes([(Expr_type.ARTH_OP.value << 5)+(l_is_const<<4)+(r_is_const<<3)+arth_op.value])
+      if l_is_const == 1:
+        curr += p16(expr[1][1], endian='little')
+      else:
+        inner(expr[1])
+
+      if r_is_const == 1:
+        curr += p16(expr[2][1], endian='little')
+      else:
+        inner(expr[2])
+    
     elif expr[0] == 'ctx':
       name = expr[1]
 
@@ -307,14 +309,24 @@ def deserialize(data):
       return ('x',), 1
     elif expr_type == Expr_type.CONST:
       return ('c', u16(data[i+1:i+3], endian='little')), 3
-    elif expr_type == Expr_type.CONST_INT:
-      return ('c_i', u8(data[i+1:i+2], endian='little')), 2
     elif expr_type == Expr_type.VAR:
       return ('v', f'v{data[i] & 0b11111}'), 1
     elif expr_type == Expr_type.ARTH_OP:
-      l, l_inc = inner(i+1)
-      r, r_inc = inner(i+1+l_inc)
       arth_type = ARTH_OP_type(data[i] & 0b11)
+      l_is_const = (data[i] >> 4) & 1
+      r_is_const = (data[i] >> 3) & 1
+      if l_is_const == 1:
+        l = ('c', u16(data[i+1:i+3], endian='little'))
+        l_inc = 2
+      else:
+        l, l_inc = inner(i+1)
+      
+      if r_is_const == 1:
+        r = ('c', u16(data[i+1+l_inc:i+3+l_inc], endian='little'))
+        r_inc = 2
+      else:
+        r, r_inc = inner(i+1+l_inc)
+      
       if arth_type == ARTH_OP_type.ADD:
         op = '+'
       elif arth_type == ARTH_OP_type.SUB:
@@ -340,8 +352,6 @@ def half_linear_eval(expr, x, env={}):
       return True, x
     elif expr[0] == 'c':
       return False, half_of_byte(expr[1])
-    elif expr[0] == 'c_i':
-      return False, half_of_int(expr[1])
     elif expr[0] == 'v':
       return env[expr[1]]
     elif expr[0] == '+':
