@@ -26,6 +26,11 @@ def sbox_atempt1():
       sbox_expr = add(sbox_expr, build_if(eq(x(), const_int(i)), const_int(s_box[i])))
   return sbox_expr
 
+# def build_v(i):
+#   v = const_int(0)
+#   for _ in range(i):
+#     v = add(v, const_int(1))
+#   return v
 def sbox_atempt2():
   sbox_expr = None
   for i in range(256):

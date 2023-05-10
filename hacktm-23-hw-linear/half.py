@@ -5,6 +5,7 @@ from enum import Enum
 import gzip
 import lzma
 import bz2
+import zlib
 
 
 def half_of_byte(b):
@@ -185,8 +186,8 @@ def expr_of_prefix(prefix):
 class Expr_type(Enum):
   X = 0b000
   CONST = 0b001
-  
-  VAR = 0b010
+  CONST_INT = 0b010
+  VAR = 0b011
   
   ARTH_OP = 0b100
   
@@ -289,6 +290,8 @@ def serialize(expr):
     else:
       assert False
   inner(expr)
+  print(len(curr))
+  print(f'{len(bz2.compress(str(expr).encode()))=}')
   return bz2.compress(curr)
   
 def deserialize(data):
