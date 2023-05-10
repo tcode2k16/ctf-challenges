@@ -250,25 +250,18 @@ def serialize(expr):
         curr += bytes([(Expr_type.VAR.value << 5) + nid])
       else:
         assert False
-    elif expr[0] in ['+','-','*']:
-      arth_op = {
-        '+': ARTH_OP_type.ADD,
-        '-': ARTH_OP_type.SUB,
-        '*': ARTH_OP_type.MUL,
-      }[expr[0]]
-      l_is_const = 1 if expr[1][0] == 'c' else 0
-      r_is_const = 1 if expr[2][0] == 'c' else 0
-      curr += bytes([(Expr_type.ARTH_OP.value << 5)+(l_is_const<<4)+(r_is_const<<3)+arth_op.value])
-      if l_is_const == 1:
-        curr += p16(expr[1][1], endian='little')
-      else:
-        inner(expr[1])
-
-      if r_is_const == 1:
-        curr += p16(expr[2][1], endian='little')
-      else:
-        inner(expr[2])
-    
+    elif expr[0] == '+':
+      curr += bytes([(Expr_type.ARTH_OP.value << 5),ARTH_OP_type.ADD.value])
+      inner(expr[1])
+      inner(expr[2])
+    elif expr[0] == '-':
+      curr += bytes([(Expr_type.ARTH_OP.value << 5),ARTH_OP_type.SUB.value])
+      inner(expr[1])
+      inner(expr[2])
+    elif expr[0] == '*':
+      curr += bytes([(Expr_type.ARTH_OP.value << 5),ARTH_OP_type.MUL.value])
+      inner(expr[1])
+      inner(expr[2])
     elif expr[0] == 'ctx':
       name = expr[1]
 
@@ -297,7 +290,6 @@ def serialize(expr):
     else:
       assert False
   inner(expr)
-  print(len(curr))
   print(f'{len(bz2.compress(str(expr).encode()))=}')
   return bz2.compress(curr)
   
@@ -312,28 +304,16 @@ def deserialize(data):
     elif expr_type == Expr_type.VAR:
       return ('v', f'v{data[i] & 0b11111}'), 1
     elif expr_type == Expr_type.ARTH_OP:
-      arth_type = ARTH_OP_type(data[i] & 0b11)
-      l_is_const = (data[i] >> 4) & 1
-      r_is_const = (data[i] >> 3) & 1
-      if l_is_const == 1:
-        l = ('c', u16(data[i+1:i+3], endian='little'))
-        l_inc = 2
-      else:
-        l, l_inc = inner(i+1)
-      
-      if r_is_const == 1:
-        r = ('c', u16(data[i+1+l_inc:i+3+l_inc], endian='little'))
-        r_inc = 2
-      else:
-        r, r_inc = inner(i+1+l_inc)
-      
+      l, l_inc = inner(i+2)
+      r, r_inc = inner(i+2+l_inc)
+      arth_type = ARTH_OP_type(data[i+1] & 0b11)
       if arth_type == ARTH_OP_type.ADD:
         op = '+'
       elif arth_type == ARTH_OP_type.SUB:
         op  = '-'
       elif arth_type == ARTH_OP_type.MUL:
         op  = '*'
-      return (op, l, r), 1+l_inc+r_inc
+      return (op, l, r), 2+l_inc+r_inc
     elif expr_type == Expr_type.CTX:
       
       l, l_inc = inner(i+1)

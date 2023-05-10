@@ -31,12 +31,31 @@ def sbox_atempt1():
 #   for _ in range(i):
 #     v = add(v, const_int(1))
 #   return v
+# def sbox_atempt2():
+#   sbox_expr = None
+#   for i in range(256):
+#     if sbox_expr == None:
+#       sbox_expr = mul(eq(x(), const_int(i)), const_int(s_box[i]))
+#     else:
+#       sbox_expr = add(sbox_expr, mul(eq(x(), const_int(i)), const_int(s_box[i])))
+#   return sbox_expr
+
 def sbox_atempt2():
   sbox_expr = None
-  for i in range(256):
-    if sbox_expr == None:
-      sbox_expr = mul(eq(x(), const_int(i)), const_int(s_box[i]))
+
+  def inner(i):
+    if i == 256:
+      return const_int(0)
+    if i == 0:
+      return ctx('i', x(), add( 
+        mul(is_zero(var('i')), const_int(s_box[i])),
+        inner(i+1)
+      ))
     else:
-      sbox_expr = add(sbox_expr, mul(eq(x(), const_int(i)), const_int(s_box[i])))
-  return sbox_expr
+      return ctx('i',uint8_sub(var('i'), const_int(1)), add( 
+        mul(is_zero(var('i')), const_int(s_box[i])),
+        inner(i+1)
+      ))
+  
+  return inner(0)
 
