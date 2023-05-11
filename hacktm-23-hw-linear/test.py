@@ -76,7 +76,7 @@ if __name__ == '__main__':
   data = serialize(expr)
   print(data)
   print(len(data))
-  new_expr = deserialize(data)
+  new_expr = deserialize(data+b'\x00'*100)
   sbox_test(new_expr)
   # assert new_expr == expr
   

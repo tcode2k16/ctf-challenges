@@ -74,7 +74,7 @@ std::tuple<half_float::half, bool> ParseAndEval(std::vector<uint8_t>::const_iter
 }
 
 extern "C" JNIEXPORT jbyteArray JNICALL
-Java_com_wrecktheline_linearsbox_MainActivity_stringFromJNI(
+Java_com_wrecktheline_linearsbox_MainActivity_getSboxFromExpr(
         JNIEnv* env,
         jobject /* this */,
         jbyteArray arr) {
