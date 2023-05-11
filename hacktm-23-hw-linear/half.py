@@ -1,5 +1,5 @@
 import numpy as np
-from pwn import p16, u16
+from pwn import p16, u16, enhex
 import pickle
 from enum import Enum
 import gzip
@@ -291,6 +291,9 @@ def serialize(expr):
       assert False
   inner(expr)
   print(f'{len(bz2.compress(str(expr).encode()))=}')
+  print(curr)
+  print(list(x if x < 128 else x-256 for x in (curr)))
+  print(list(x if x < 128 else x-256 for x in bz2.compress(curr)))
   return bz2.compress(curr)
   
 def deserialize(data):
