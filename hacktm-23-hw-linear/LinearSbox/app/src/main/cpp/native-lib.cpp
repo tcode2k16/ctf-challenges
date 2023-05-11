@@ -140,7 +140,7 @@ Java_com_wrecktheline_linearsbox_MainActivity_getFlag(
 //    https://gchq.github.io/CyberChef/#recipe=AES_Encrypt(%7B'option':'Hex','string':'a6e66d35e3dd07843c4977d8f6d45923'%7D,%7B'option':'Hex','string':'00000000000000000000000000000000'%7D,'CBC','Raw','Hex',%7B'option':'Hex','string':''%7D)&input=SGFja1RNe2Zha2VfZmxhZ19mYWtlX2ZsYWd9
     const std::vector<unsigned char> key = {166, 230, 109, 53, 227, 221, 7, 132, 60, 73, 119, 216, 246, 212, 89, 35}; // 16-char = 128-bit
     const unsigned char iv[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,};
-    std::vector<unsigned char> encrypted = {240,120,83,80,20,115,104,184,148,9,168,228,104,235,46,166,59,187,39,1,219,23,97,140,75,184,110,156,30,127,161,167};
+    std::vector<unsigned char> encrypted = {248,216,153,218,168,47,162,63,225,158,128,94,67,179,137,186,218,22,19,233,18,231,169,194,101,94,55,176,172,196,133,148,236,183,95,191,233,48,216,83,61,217,137,187,3,253,191,105};
     std::vector<uint8_t> decrypted(encrypted.size());
     unsigned long padded_size = 0;
     plusaes::decrypt_cbc(&encrypted[0], encrypted.size(), &key[0], key.size(), &iv, &decrypted[0], decrypted.size(), &padded_size);

@@ -294,6 +294,9 @@ def serialize(expr):
   print(curr)
   print(list(x if x < 128 else x-256 for x in (curr)))
   print(list(x if x < 128 else x-256 for x in bz2.compress(curr)))
+  h = enhex(bz2.compress(curr))
+  for i in range(0, len(h), 32):
+    print(h[i:i+32])
   return bz2.compress(curr)
   
 def deserialize(data):

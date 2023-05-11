@@ -4,6 +4,7 @@ import android.R
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.os.Bundle
@@ -69,6 +70,11 @@ class MainActivity : AppCompatActivity(), MifareClassicDataInterface {
 //        }
 //        out.close()
 //        bzIn.close()
+        binding.mainlayout.setOnClickListener {
+            binding.sampleText.text = "Scan Tag to begin"
+            binding.mainlayout.setBackgroundColor(Color.TRANSPARENT)
+//            binding.mainlayout.setBackgroundColor(Color.rgb(175,236,51))
+        }
     }
 
     // implement these functions in the client activity:
@@ -95,6 +101,7 @@ class MainActivity : AppCompatActivity(), MifareClassicDataInterface {
         if ((intent.action == NfcAdapter.ACTION_TAG_DISCOVERED) || (intent.action == NfcAdapter.ACTION_TECH_DISCOVERED)) {
             Toast.makeText(this, "start reading card", Toast.LENGTH_SHORT).show()
 
+            binding.mainlayout.setBackgroundColor(Color.TRANSPARENT)
             val nfcTag = intent.getParcelableExtra<Tag>(NfcAdapter.EXTRA_TAG)
             if (MifareClassicTag.CheckMifareClassicSupport(nfcTag) != 0) {
                 println("The discovered NFC device is not a Mifare Classic tag.")
@@ -133,7 +140,13 @@ class MainActivity : AppCompatActivity(), MifareClassicDataInterface {
                 // Example of a call to a native method
                 val flag = getFlag(bytes)
 
-                binding.sampleText.text = String(flag)
+                if (String(flag) == "This is the correct decrypted message!") {
+                    binding.sampleText.text = "Success!"
+                    binding.mainlayout.setBackgroundColor(Color.rgb(175,236,51))
+                } else {
+                    binding.sampleText.text = "Try harder!"
+                    binding.mainlayout.setBackgroundColor(Color.rgb(243,90,21))
+                }
 
                 Toast.makeText(this, "done", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
