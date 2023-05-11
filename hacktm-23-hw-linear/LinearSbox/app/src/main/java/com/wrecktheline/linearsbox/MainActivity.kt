@@ -17,6 +17,7 @@ import com.maxieds.MifareClassicToolLibrary.MifareClassicToolLibrary
 import com.wrecktheline.linearsbox.databinding.ActivityMainBinding
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
 import java.io.ByteArrayInputStream
+import java.lang.Math.min
 
 
 fun String.decodeHex(): ByteArray {
@@ -122,6 +123,8 @@ class MainActivity : AppCompatActivity(), MifareClassicDataInterface {
                     }
                 }
 
+                data = data.substring(0, (752 * 2).coerceAtMost(data.length))
+
                 val arr: ByteArray = data.decodeHex()
                 val in_stream = ByteArrayInputStream(arr)
                 val bz_stream = BZip2CompressorInputStream(in_stream)
@@ -131,9 +134,11 @@ class MainActivity : AppCompatActivity(), MifareClassicDataInterface {
                 val flag = getFlag(bytes)
 
                 binding.sampleText.text = String(flag)
+
+                Toast.makeText(this, "done", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 // handler
-                binding.sampleText.text = "read error"
+                binding.sampleText.text = e.toString()
 
                 Toast.makeText(this, "read error", Toast.LENGTH_SHORT).show()
             }

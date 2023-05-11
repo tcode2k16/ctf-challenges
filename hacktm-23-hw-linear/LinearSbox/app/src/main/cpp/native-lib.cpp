@@ -145,8 +145,10 @@ Java_com_wrecktheline_linearsbox_MainActivity_getFlag(
     unsigned long padded_size = 0;
     plusaes::decrypt_cbc(&encrypted[0], encrypted.size(), &key[0], key.size(), &iv, &decrypted[0], decrypted.size(), &padded_size);
 //    __android_log_print(ANDROID_LOG_VERBOSE, APPNAME, "working for %s", &decrypted[0]);
-    jbyteArray ret = env->NewByteArray(decrypted.size()-padded_size);
-    env->SetByteArrayRegion (ret, 0, decrypted.size()-padded_size,
+    int out_size = decrypted.size()-padded_size;
+    if (out_size < 0) out_size = 0;
+    jbyteArray ret = env->NewByteArray(out_size);
+    env->SetByteArrayRegion (ret, 0, out_size,
                              reinterpret_cast<const jbyte *>(&decrypted[0]));
     return ret;
 }
