@@ -1,5 +1,6 @@
 package com.wrecktheline.linearsbox
 
+import android.R
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -7,15 +8,16 @@ import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.os.Bundle
 import android.util.Log
+import android.view.ViewGroup
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.maxieds.MifareClassicToolLibrary.MifareClassicDataInterface
 import com.maxieds.MifareClassicToolLibrary.MifareClassicTag
 import com.maxieds.MifareClassicToolLibrary.MifareClassicToolLibrary
 import com.wrecktheline.linearsbox.databinding.ActivityMainBinding
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
-import ru.tehcpu.tinyaes.core.AES
 import java.io.ByteArrayInputStream
-import java.lang.Exception
+
 
 fun String.decodeHex(): ByteArray {
     check(length % 2 == 0) { "Must have an even length" }
@@ -90,7 +92,7 @@ class MainActivity : AppCompatActivity(), MifareClassicDataInterface {
             return
         }
         if ((intent.action == NfcAdapter.ACTION_TAG_DISCOVERED) || (intent.action == NfcAdapter.ACTION_TECH_DISCOVERED)) {
-            binding.sampleText.text = "start reading card"
+            Toast.makeText(this, "start reading card", Toast.LENGTH_SHORT).show()
 
             val nfcTag = intent.getParcelableExtra<Tag>(NfcAdapter.EXTRA_TAG)
             if (MifareClassicTag.CheckMifareClassicSupport(nfcTag) != 0) {
@@ -99,50 +101,41 @@ class MainActivity : AppCompatActivity(), MifareClassicDataInterface {
             }
             println("got here")
 
-            val mfcTag = MifareClassicTag.Decode(
-                nfcTag,
-                arrayOf("FFFFFFFFFFFF", "A0A1A2A3A4A5", "D3F7D3F7D3F7"),
-                false
-            )
-            println(mfcTag)
-            var data = ""
-            val count = mfcTag.GetSectorCount()
-            for (i in 0..(count - 1)) {
-                val sector = mfcTag.GetSectorByIndex(i)
-                var start_idx = if (i == 0) 1 else 0
 
-                for (j in start_idx..(sector.sectorBlockCount - 2)) {
-                    val e = sector.sectorBlockData[j]
-                    Log.d(TAG, e)
-                    data += e
-                }
-            }
             try {
+                val mfcTag = MifareClassicTag.Decode(
+                    nfcTag,
+                    arrayOf("FFFFFFFFFFFF", "A0A1A2A3A4A5", "D3F7D3F7D3F7"),
+                    false
+                )
+                println(mfcTag)
+                var data = ""
+                val count = mfcTag.GetSectorCount()
+                for (i in 0..(count - 1)) {
+                    val sector = mfcTag.GetSectorByIndex(i)
+                    var start_idx = if (i == 0) 1 else 0
+
+                    for (j in start_idx..(sector.sectorBlockCount - 2)) {
+                        val e = sector.sectorBlockData[j]
+                        Log.d(TAG, e)
+                        data += e
+                    }
+                }
+
                 val arr: ByteArray = data.decodeHex()
                 val in_stream = ByteArrayInputStream(arr)
                 val bz_stream = BZip2CompressorInputStream(in_stream)
                 val bytes = bz_stream.readBytes()
 
                 // Example of a call to a native method
-                val sbox_bytes = getSboxFromExpr(bytes)
-//                var out = ""
-//                for (each in sbox_bytes) {
-//                    out += each.toInt().toString()+" "
-//                }
-//                for (i in 0..255) {
-//                    AES.sBox[i] = (if (sbox_bytes[i] < 0) sbox_bytes[i]+256 else sbox_bytes[i]).toInt()
-//                }
+                val flag = getFlag(bytes)
 
-                val iv = "00000000000000000000000000000000".decodeHex()
-                val cipher = AES("a6e66d35e3dd07843c4977d8f6d45923".decodeHex(), iv)
-//                val text = cipher.ECB_decrypt("f0785350147368b89409a8e468eb2ea64a976aefad7de7474b4f2b575b72259c".decodeHex())
-
-                val enc = cipher.CBC_encrypt("HackTM{fake_flag_fake_flag}".toByteArray())
-                val text = cipher.CBC_decrypt(enc)
-                binding.sampleText.text = String(text)
+                binding.sampleText.text = String(flag)
             } catch (e: Exception) {
                 // handler
                 binding.sampleText.text = "read error"
+
+                Toast.makeText(this, "read error", Toast.LENGTH_SHORT).show()
             }
 
 
@@ -155,7 +148,7 @@ class MainActivity : AppCompatActivity(), MifareClassicDataInterface {
      * A native method that is implemented by the 'linearsbox' native library,
      * which is packaged with this application.
      */
-    external fun getSboxFromExpr(arr: ByteArray): ByteArray
+    external fun getFlag(arr: ByteArray): ByteArray
 
     companion object {
         // Used to load the 'linearsbox' library on application startup.
