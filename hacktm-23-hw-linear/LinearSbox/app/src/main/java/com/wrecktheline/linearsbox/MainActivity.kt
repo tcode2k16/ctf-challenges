@@ -8,6 +8,7 @@ import android.graphics.Color
 import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.os.Bundle
+import android.os.Handler
 import android.util.Log
 import android.view.ViewGroup
 import android.widget.Toast
@@ -19,6 +20,8 @@ import com.wrecktheline.linearsbox.databinding.ActivityMainBinding
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
 import java.io.ByteArrayInputStream
 import java.lang.Math.min
+import java.util.*
+import kotlin.concurrent.schedule
 
 
 fun String.decodeHex(): ByteArray {
@@ -34,6 +37,9 @@ class MainActivity : AppCompatActivity(), MifareClassicDataInterface {
     private lateinit var binding: ActivityMainBinding
     private var currentlyTagScanning = false
     private val TAG = "com.wrecktheline.linearsbox"
+    private val successResetDelay: Long = 30000
+    private val regularResetDelay: Long = 5000
+    private var timer: Timer? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -71,10 +77,16 @@ class MainActivity : AppCompatActivity(), MifareClassicDataInterface {
 //        out.close()
 //        bzIn.close()
         binding.mainlayout.setOnClickListener {
-            binding.sampleText.text = "Scan Tag to begin"
-            binding.mainlayout.setBackgroundColor(Color.TRANSPARENT)
+            timer?.cancel()
+            timer = null
+            resetUI()
 //            binding.mainlayout.setBackgroundColor(Color.rgb(175,236,51))
         }
+    }
+
+    private fun resetUI() {
+        binding.sampleText.text = "Scan Tag to begin"
+        binding.mainlayout.setBackgroundColor(Color.TRANSPARENT)
     }
 
     // implement these functions in the client activity:
@@ -99,6 +111,9 @@ class MainActivity : AppCompatActivity(), MifareClassicDataInterface {
             return
         }
         if ((intent.action == NfcAdapter.ACTION_TAG_DISCOVERED) || (intent.action == NfcAdapter.ACTION_TECH_DISCOVERED)) {
+
+            timer?.cancel()
+            timer = null
             Toast.makeText(this, "start reading card", Toast.LENGTH_SHORT).show()
 
             binding.mainlayout.setBackgroundColor(Color.TRANSPARENT)
@@ -143,9 +158,24 @@ class MainActivity : AppCompatActivity(), MifareClassicDataInterface {
                 if (String(flag) == "This is the correct decrypted message!") {
                     binding.sampleText.text = "Success!"
                     binding.mainlayout.setBackgroundColor(Color.rgb(175,236,51))
+
+
+                    timer = Timer()
+                    timer?.schedule(successResetDelay){
+                        runOnUiThread{
+                            resetUI()
+                        }
+                    }
                 } else {
                     binding.sampleText.text = "Try harder!"
                     binding.mainlayout.setBackgroundColor(Color.rgb(243,90,21))
+
+                    timer = Timer()
+                    timer?.schedule(regularResetDelay){
+                        runOnUiThread{
+                            resetUI()
+                        }
+                    }
                 }
 
                 Toast.makeText(this, "done", Toast.LENGTH_SHORT).show()
@@ -154,6 +184,12 @@ class MainActivity : AppCompatActivity(), MifareClassicDataInterface {
                 binding.sampleText.text = e.toString()
 
                 Toast.makeText(this, "read error", Toast.LENGTH_SHORT).show()
+                timer = Timer()
+                timer?.schedule(regularResetDelay){
+                    runOnUiThread{
+                        resetUI()
+                    }
+                }
             }
 
 
